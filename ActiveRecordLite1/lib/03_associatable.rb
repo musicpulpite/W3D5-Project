@@ -30,7 +30,7 @@ end
 class HasManyOptions < AssocOptions
   def initialize(name, self_class_name, options = {})
     @foreign_key = options[:foreign_key] ||= (self_class_name.underscore + "_id").to_sym
-    @class_name = options[:class_name] ||= (name.camelcase.singularize)
+    @class_name = options[:class_name] ||= (name.to_s.camelcase.singularize)
     @primary_key = options[:primary_key] ||= :id
   end
 end
@@ -38,24 +38,36 @@ end
 module Associatable
   # Phase IIIb
   def belongs_to(name, options = {})
-    options = BelongsToOptions.new(name, options)
+    self.assoc_options[name] = BelongsToOptions.new(name, options)
 
-    foreign_key = options.send(:foreign_key)
-    # model_class = options.send(:model_class)
-    primary_key = options.send(:primary_key)
+    # foreign_key = options.foreign_key
+    # primary_key = options.primary_key
 
-    debugger
-    define_method(:name) do
-      result = options.model_class.where(primary_key => self.attributes[foreign_key])#.limit(1)
+    define_method(name) do
+      options = self.class.assoc_options[name]
+      foreign_key_val = self.attributes[options.foreign_key]
+
+      options.model_class.where({options.primary_key => foreign_key_val}).first
     end
   end
 
   def has_many(name, options = {})
-    # ...
+    self.assoc_options[name] = HasManyOptions.new(name, self.name, options)
+
+    # foreign_key = options.foreign_key
+    # primary_key = options.primary_key
+
+    define_method(name) do
+      options = self.class.assoc_options[name]
+      primary_key_val = self.attributes[options.primary_key]
+
+      options.model_class.where({options.foreign_key => primary_key_val})
+    end
   end
 
   def assoc_options
-    # Wait to implement this in Phase IVa. Modify `belongs_to`, too.
+    @associations ||= {}
+    @associations
   end
 end
 
